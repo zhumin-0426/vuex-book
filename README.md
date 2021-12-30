@@ -1,2 +1,1 @@
-# vuex-book
-vuex source code learn!
+README.md

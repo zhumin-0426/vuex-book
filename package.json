@@ -1,0 +1,23 @@
+{
+  "name": "vuex-book",
+  "version": "1.0.0",
+  "description": "parsing vuex source code!",
+  "main": "index.js",
+  "scripts": {
+    "docs:dev": "vuepress dev docs",
+    "docs:build": "vuepress build docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhumin-0426/vuex-book.git"
+  },
+  "author": "Mrzhu",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/zhumin-0426/vuex-book/issues"
+  },
+  "homepage": "https://github.com/zhumin-0426/vuex-book#readme",
+  "devDependencies": {
+    "vuepress": "^1.8.2"
+  }
+}
