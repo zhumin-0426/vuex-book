@@ -36,7 +36,7 @@ expect(add(1, 2)).toBe(3)
 ## .babelrc
 ## jest.config.js
 
-::: tip 相关官方文档地址
+::: tip 文档地址
 babel: https://babeljs.io/<br/>
 rollup: https://rollupjs.org/guide/en/<br/>
 webpack: https://webpack.js.org/<br/>

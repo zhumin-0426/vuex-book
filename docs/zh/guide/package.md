@@ -75,8 +75,11 @@ console.log(result);
 
 ```json
 "scripts": {
+    // 实例node服务运行脚本
     "dev": "node examples/server.js",
+    // 依次执行npm run build:main和npm run build:logger指令
     "build": "npm run build:main && npm run build:logger",
+    // 
     "build:main": "node scripts/build-main.js",
     "build:logger": "node scripts/build-logger.js",
     "lint": "eslint src test",
