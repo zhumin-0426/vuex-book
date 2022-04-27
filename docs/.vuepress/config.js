@@ -36,7 +36,9 @@ module.exports = {
 				collapsable: false,
 				children: [
 					{ title: '从package.json开始', path: '/zh/guide/package' },
-					{ title: '相关工具以及配置文件的介绍', path: '/zh/guide/configs' }
+					{ title: '相关工具以及配置文件的介绍', path: '/zh/guide/configs' },
+					{ title: '以package.json为线索', path: '/zh/guide/entry' },
+					{ title: 'store对象', path: '/zh/guide/store'}
 				]
 			}
 		],
