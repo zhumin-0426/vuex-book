@@ -17,7 +17,7 @@ module.exports = {
 		lastUpdated: '上次更新:',
 		nav: [
 			{ text: '正文', link: '/zh/guide/package' },
-			{ text: '附录', link: '/zh/appendix/' }
+			{ text: '附录', link: '/zh/appendix/util' }
 		],
 		sidebar: [
 			{
