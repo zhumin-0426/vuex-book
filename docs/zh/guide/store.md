@@ -279,7 +279,120 @@ const {
     this._watcherVM = new Vue()
     this._makeLocalGettersCache = Object.create(null)
 ```
-根据注释可知这是初始化Store这个类的一些内部状态的，这个我们待会再讲其作用，我们先看到以下这段代码
+根据注释可知这是初始化Store这个类的一些内部状态的，我们先看到_modules属性，至于其他属性我们暂时先不了解，到时使用时自然就知道其作用了，我们看到_modules的属性值是ModuleCollection的实例对象，该实例化对象接受一个参数，即我们透传过来的options，根据顶部的引入关系可知，ModuleCollection存在于`src/module/module-collection`这个文件中，在该文件中并找到ModuleCollection如下：
+```js
+export default class ModuleCollection {
+  constructor (rawRootModule) {
+    // register root module (Vuex.Store options)
+    this.register([], rawRootModule, false)
+  }
+
+  get (path) {
+    return path.reduce((module, key) => {
+      return module.getChild(key)
+    }, this.root)
+  }
+
+  getNamespace (path) {
+    // console.log("path",path)
+    let module = this.root
+    const result = path.reduce((namespace, key) => {
+      module = module.getChild(key)
+      return namespace + (module.namespaced ? key + '/' : '')
+    }, '')
+    return result
+  }
+
+  update (rawRootModule) {
+    update([], this.root, rawRootModule)
+  }
+
+  register (path, rawModule, runtime = true) {
+    if (__DEV__) {
+      assertRawModule(path, rawModule)
+    }
+
+    const newModule = new Module(rawModule, runtime)
+    if (path.length === 0) {
+      this.root = newModule
+    } else {
+      const parent = this.get(path.slice(0, -1))
+      parent.addChild(path[path.length - 1], newModule)
+    }
+
+    // register nested modules
+    if (rawModule.modules) {
+      forEachValue(rawModule.modules, (rawChildModule, key) => {
+        this.register(path.concat(key), rawChildModule, runtime)
+      })
+    }
+  }
+
+  unregister (path) {
+    const parent = this.get(path.slice(0, -1))
+    const key = path[path.length - 1]
+    const child = parent.getChild(key)
+
+    if (!child) {
+      if (__DEV__) {
+        console.warn(
+          `[vuex] trying to unregister module '${key}', which is ` +
+          `not registered`
+        )
+      }
+      return
+    }
+
+    if (!child.runtime) {
+      return
+    }
+
+    parent.removeChild(key)
+  }
+
+  isRegistered (path) {
+    const parent = this.get(path.slice(0, -1))
+    const key = path[path.length - 1]
+
+    if (parent) {
+      return parent.hasChild(key)
+    }
+
+    return false
+  }
+}
+```
+我们看到该文件导出了一个类，即我们之前遇到的ModuleCollection，我们先看到constructor中的代码，如下：
+```js
+constructor (rawRootModule) {
+  // register root module (Vuex.Store options)
+  this.register([], rawRootModule, false)
+}
+```
+constructor接受一个参数rawRootModule，即我们在调用时透传过来的options，然后在constructor中调用了这个类中的register方法，该方法接收三个参数，分别是一个空数组，rawRootModule，以及一个布尔值false，我们找到该类中的rigister方法，如下：
+```js
+register (path, rawModule, runtime = true) {
+  if (__DEV__) {
+    assertRawModule(path, rawModule)
+  }
+
+  const newModule = new Module(rawModule, runtime)
+  if (path.length === 0) {
+    this.root = newModule
+  } else {
+    const parent = this.get(path.slice(0, -1))
+    parent.addChild(path[path.length - 1], newModule)
+  }
+
+  // register nested modules
+  if (rawModule.modules) {
+    forEachValue(rawModule.modules, (rawChildModule, key) => {
+      this.register(path.concat(key), rawChildModule, runtime)
+    })
+  }
+}
+```
+TODO
 ```js
     // bind commit and dispatch to self
     const store = this
@@ -329,7 +442,66 @@ const {
       return commit.call(store, type, payload, options)
     } 
 ```
-我们可以看到在当前的实例对象定义了两个属性分别是dispatch和commit属性方法，并在这两个方法中调用了我们刚才结构的得到的dispatch和commit，这样我们就可以在不影响原方法的情况下进行调用了，现在我们来看到Store中的commit方法，如下：
+我们可以看到在当前的实例对象定义了两个属性分别是dispatch和commit属性方法，并在这两个方法中调用了我们刚才结构的得到的dispatch和commit，这样我们就可以在不影响原方法的情况下进行调用了，现在我们继续往下看，如下：
+```js
+installModule(this, state, [], this._modules.root)
+```
+调用了installModule方法，调用该方法时传递了四个参数，参数意义（//TODO），该定义在当前文件的的下方，找到该方法如下所示便是installModule方法的全部内容：
+```js
+function installModule (store, rootState, path, module, hot) {
+  const isRoot = !path.length
+  const namespace = store._modules.getNamespace(path)
+
+  // register in namespace map
+  if (module.namespaced) {
+    if (store._modulesNamespaceMap[namespace] && __DEV__) {
+      console.error(`[vuex] duplicate namespace ${namespace} for the namespaced module ${path.join('/')}`)
+    }
+    store._modulesNamespaceMap[namespace] = module
+  }
+
+  // set state
+  if (!isRoot && !hot) {
+    const parentState = getNestedState(rootState, path.slice(0, -1))
+    const moduleName = path[path.length - 1]
+    store._withCommit(() => {
+      if (__DEV__) {
+        if (moduleName in parentState) {
+          console.warn(
+            `[vuex] state field "${moduleName}" was overridden by a module with the same name at "${path.join('.')}"`
+          )
+        }
+      }
+      Vue.set(parentState, moduleName, module.state)
+    })
+  }
+
+  const local = module.context = makeLocalContext(store, namespace, path)
+
+  module.forEachMutation((mutation, key) => {
+    const namespacedType = namespace + key
+    registerMutation(store, namespacedType, mutation, local)
+  })
+
+  module.forEachAction((action, key) => {
+    const type = action.root ? key : namespace + key
+    const handler = action.handler || action
+    registerAction(store, type, handler, local)
+  })
+
+  module.forEachGetter((getter, key) => {
+    const namespacedType = namespace + key
+    registerGetter(store, namespacedType, getter, local)
+  })
+
+  module.forEachChild((child, key) => {
+    installModule(store, rootState, path.concat(key), child, hot)
+  })
+}
+```
+
+
+
 ```js
 commit (_type, _payload, _options) {
   // check object-style commit
@@ -386,6 +558,8 @@ store.commit({
     options
   } = unifyObjectStyle(_type, _payload, _options)
 ```
+
+
 
 
 
