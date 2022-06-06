@@ -817,9 +817,325 @@ getNamespace (path) {
   }, '')
 }
 ```
+根据该函数的命名可知，聪明的你应该已经猜到该函数的作用是干嘛的吧，没错，它就是来获取命名空间用的，那各位还记得`vuex`中的命名空间是啥吗？默认情况下`action`、`mutation`和`getter`是注册在全局命名空间下的，但是当我们使用命名空间的时候`action`、`mutation`和`getter`会根据模块注册的路径调整命名，如下案例
+```js
+const moduleA = {
+  namespaced:true
+  state:{
+    count:0
+  }
+  mutations:{
+    increment(state){
+      ++state.coung
+    }
+  }
+}
+// 当我们未使用命名空间时，我们访问moduleA中mutations中的incremnet方法为this.$store.commit('increment'),当我们使用命名空间时为this.$store.commit('moduleA/incremnet')
+```
+现在我们回顾了命名空间在`vuex`中的基本作用，我们继续看`getNamespace`函数中的代码，首先声明了一个变量`module`，然后使用了`reduce`循环`path`，由于我们传递的`path`是一个空数组，所以由此可知`getNamespace`返回的是一个空字符串，我们暂时不看循环中的代码，等用到时再讲解，现在我们继续看`installModule`函数中的代码，如下
+```js
+// register in namespace map
+if (module.namespaced) {
+  if (store._modulesNamespaceMap[namespace] && __DEV__) {
+    console.error(`[vuex] duplicate namespace ${namespace} for the namespaced module ${path.join('/')}`)
+  }
+  store._modulesNamespaceMap[namespace] = module
+}
+```
+在讲解如上这段代码的时候我们，我们先看到以下这个案例
+```js
+const moduleA = {
+  namespaced:true,
+  state:{
+      count:0
+  },
+  mutations:{
+      increment:function(state){
+          ++state.count
+      },
+      decrement:function(state){
+          --state.count
+      }
+  }
+}
+const store = new Vuex.Store({
+  state:{
+      context:'this is vuex!'
+  },
+  mutations:{
+      show:function(state){
+          console.log(state.context)
+      }
+  },
+  modules:{
+      moduleA
+  }
+})
+```
+根据以上可知此时我们的代码是不会走`if`分支的，所以我们先不讲`if`分支中的代码，继续往下看
+```js
+// set state
+if (!isRoot && !hot) {
+  const parentState = getNestedState(rootState, path.slice(0, -1))
+  const moduleName = path[path.length - 1]
+  store._withCommit(() => {
+    if (__DEV__) {
+      if (moduleName in parentState) {
+        console.warn(
+          `[vuex] state field "${moduleName}" was overridden by a module with the same name at "${path.join('.')}"`
+        )
+      }
+    }
+    Vue.set(parentState, moduleName, module.state)
+  })
+}
+```
+如上代码也是一个`if`判断，但是根据以上我们的分析可知此时的`!isRoot`为`false`，所以依然不会走`if`（真爽），我们继续往下看
+```js
+const local = module.context = makeLocalContext(store, namespace, path)
+```
+由上可知声明了一个常量`local`以及在`module`上添加了`context`属性，且常量和`context`属性的值都为`makeLocalContext`函数的返回值，我们找到`makeLocalContext`函数，如下
+```js
+function makeLocalContext (store, namespace, path) {
+  const noNamespace = namespace === ''
+  const local = {
+    dispatch: noNamespace ? store.dispatch : (_type, _payload, _options) => {
+      const args = unifyObjectStyle(_type, _payload, _options)
+      const { payload, options } = args
+      let { type } = args
 
+      if (!options || !options.root) {
+        type = namespace + type
+        if (__DEV__ && !store._actions[type]) {
+          console.error(`[vuex] unknown local action type: ${args.type}, global type: ${type}`)
+          return
+        }
+      }
 
+      return store.dispatch(type, payload)
+    },
 
+    commit: noNamespace ? store.commit : (_type, _payload, _options) => {
+      const args = unifyObjectStyle(_type, _payload, _options)
+      const { payload, options } = args
+      let { type } = args
+
+      if (!options || !options.root) {
+        type = namespace + type
+        if (__DEV__ && !store._mutations[type]) {
+          console.error(`[vuex] unknown local mutation type: ${args.type}, global type: ${type}`)
+          return
+        }
+      }
+
+      store.commit(type, payload, options)
+    }
+  }
+
+  // getters and state object must be gotten lazily
+  // because they will be changed by vm update
+  Object.defineProperties(local, {
+    getters: {
+      get: noNamespace
+        ? () => store.getters
+        : () => makeLocalGetters(store, namespace)
+    },
+    state: {
+      get: () => getNestedState(store.state, path)
+    }
+  })
+
+  return local
+}
+```
+该函数接收三个参数，分别是当前的`Store`类，获取的命名空间值以及我们透传过来的`path`值，此时的`path`为一个空数组，首先我们看到如下代码
+```js
+const noNamespace = namespace === ''
+const local = {
+  dispatch: noNamespace ? store.dispatch : (_type, _payload, _options) => {
+    const args = unifyObjectStyle(_type, _payload, _options)
+    const { payload, options } = args
+    let { type } = args
+
+    if (!options || !options.root) {
+      type = namespace + type
+      if (__DEV__ && !store._actions[type]) {
+        console.error(`[vuex] unknown local action type: ${args.type}, global type: ${type}`)
+        return
+      }
+    }
+
+    return store.dispatch(type, payload)
+  },
+
+  commit: noNamespace ? store.commit : (_type, _payload, _options) => {
+    const args = unifyObjectStyle(_type, _payload, _options)
+    const { payload, options } = args
+    let { type } = args
+
+    if (!options || !options.root) {
+      type = namespace + type
+      if (__DEV__ && !store._mutations[type]) {
+        console.error(`[vuex] unknown local mutation type: ${args.type}, global type: ${type}`)
+        return
+      }
+    }
+    store.commit(type, payload, options)
+  }
+}
+```
+首先我们看到声明了两个常量，分别是`noNamespace`和`local`，`noNamespace`是一个布尔值，因为此时的`namespaced`是一个空字符串，所以`noNamespace`此时为`true`，local是一个对象，包含了`dispatch`和`commit`属性，当`noNamespace`为`true`时，`dispatch`和`commit`的属性值分别为为`store.dispatch`和`store.commit`，所以此时的`local`应该为如下所示
+```js
+const local = {
+  dispatch:store.dispatch,
+  commit:store.commit
+}
+```
+我们继续往下看如下代码
+```js
+Object.defineProperties(local, {
+  getters: {
+    get: noNamespace
+      ? () => store.getters
+      : () => makeLocalGetters(store, namespace)
+  },
+  state: {
+    get: () => getNestedState(store.state, path)
+  }
+})
+```
+我们看到此时我们使用`Object.defineProperties`方法再`local`，定义了多个属性，分别是`getters`和`state`，并在这两个属性对象中定义了取值函数`set`，由于此时的`noNamespace`为`true`，所以根据以上可知此时`local`对象应该如下所示
+```js
+const local = {
+  dispatch:store.dispatch,
+  commit:store.commit,
+  getters:{ get: () => store.getters},
+  state:{ get: () => getNestedState(store.state, path) }
+}
+```
+现在我们接着往下看`installModule`函数中的代码
+```js
+module.forEachMutation((mutation, key) => {
+  const namespacedType = namespace + key
+  registerMutation(store, namespacedType, mutation, local)
+})
+
+module.forEachAction((action, key) => {
+  const type = action.root ? key : namespace + key
+  const handler = action.handler || action
+  registerAction(store, type, handler, local)
+})
+
+module.forEachGetter((getter, key) => {
+  const namespacedType = namespace + key
+  registerGetter(store, namespacedType, getter, local)
+})
+
+module.forEachChild((child, key) => {
+  installModule(store, rootState, path.concat(key), child, hot)
+})
+```
+根据以上可知分别调用了`module`中的四个方法，分别是`forEachMutation`、`forEachAction`、`forEachGetter`、`forEachChild`，并且这四个方法中都接收一个函数作为参数，我们以`forEachMutation`函数进行讲解，找到`forEachMutation`，方法如下
+```js
+forEachMutation (fn) {
+  if (this._rawModule.mutations) {
+    forEachValue(this._rawModule.mutations, fn)
+  }
+}
+```
+首先判断`this._rawModule.mutations`是否存在，如果存在则执行`if`语句块中的代码，聪明的你还是的`_rowModule`属性的值是什么吗？没错，`_rowModule`属性值就是当前模块的选项对象，我们假设该对象中存在`mutations`属性，那么就执行`if`语句块中的代码，该`if`语句块中调用了`forEachValue`函数，该函数我们已经讲解过了，这里我们不再讲解，该函数接收两个参数，第一个参数为`mutations`属性对象，第二个参数为我们传递给`forEachMutation`函数的一个参数，现在我们直接看第二个参数做了什么，如下便是我们传递的第二个参数
+```js
+const fn = (mutation, key) => {
+  const namespacedType = namespace + key
+  registerMutation(store, namespacedType, mutation, local)
+}
+```
+该函数接收两个参数，第一个参数为我们在`mutations`属性对象中定义的方法属性值，第二个参数为我们在`mutations`属性对象中定义的方法的`key`值，我们看到该函数中首先定义了一个`namespacedType`常量，该常量的值时`namespace`和`key`的字符串拼接，我们知道此时的`namespace`为一个空值，假设我们在`mutations`属性对象中定义了一个`increment`方法，那么此时的`namespacedType`的值就为"increment"，接着我们调用了`registerMutation`方法，该方法接收四个参数，分别是当前的store、namespacedType、mutation、local，我们找到`registerMutation`方法如下
+```js
+function registerMutation (store, type, handler, local) {
+  const entry = store._mutations[type] || (store._mutations[type] = [])
+  entry.push(function wrappedMutationHandler (payload) {
+    handler.call(store, local.state, payload)
+  })
+}
+```
+首先在该函数中定义了一个`entry`常量，该常量的值对应`store._mutations[type]`属性的值，还记得`store._mutations`属性是在哪里定义的吗？没错，即我们之前提到过的定义内部状态，该属性初始化为一个空对象，所以此时的`entry`为一个空数组`[]`，接着调用了该数组的`push`方法，我们可以看到在该方法中传递了一个`wrappedMutationHandler`函数作为参数，在该函数的内部利用`.call`绑定到当前对象并执行，且在`handle`方法中传递了两个参数，分别是`local.state`和`payload`，第一个参数我们已经讲解了，第二个参数你是不是很熟悉？是不是有一种想把它的冲动呢？没错，他就是我们在调用`mutations`属性对象中的方法时传递的载核，也就是我们调用时传递的参数，讲到这里我想我们此时应该知道`_mutations`这个属性的作用了，它其实就是用来盛放我们在`mutaition`中定义的方法的，假设我们定义在mutations中的方法如下
+```js
+mutations:{
+  increment(){}
+}
+```
+那么此时的的`_mutations`应该为如下所示
+```js
+store._mutations = {
+  increment:[fnctions wrappedMutationHandler(){}]
+}
+```
+现在我们知道`forEachMutation`函数的作用了吧，其实就是将我们定义在`mutations`中的方法添加到`_mutations`这个对象中的，讲完了`forEachMutation`方法，现在我们找到`forEachGetter`方法，如下
+```js
+ module.forEachGetter((getter, key) => {
+  const namespacedType = namespace + key
+  registerGetter(store, namespacedType, getter, local)
+})
+```
+我们可以其实可以发现，其实`forEachGetter`函数的操作顺序和`forEachMutation`函数的操作顺其实是一样的，所以我们直接找到`registerGetter`函数，如下
+```js
+function registerGetter (store, type, rawGetter, local) {
+  if (store._wrappedGetters[type]) {
+    if (__DEV__) {
+      console.error(`[vuex] duplicate getter key: ${type}`)
+    }
+    return
+  }
+  store._wrappedGetters[type] = function wrappedGetter (store) {
+    return rawGetter(
+      local.state, // local state
+      local.getters, // local getters
+      store.state, // root state
+      store.getters // root getters
+    )
+  }
+}
+```
+首先判断`store._wrappedGetters[type]`是否为`true`，即`store._wrappedGetters`是否存在该属性，如果存在则在开发环境下给用户提示一段错误信息，即我们定义在`getter`属性对象中的方法存在重复的，然后执行`return`，如果不存在`store._wrappedGetters`这个对象中定义该属性，且该属性的值为一个函数，改函数接收一个参数`store`，即我们透传过来的`store`，概述的内部执行`rawGetter`函数并返回`rawGetter`的返回值，`rawGetter`函数接收四个参数，分别是当前模块的`state`，当前模块的`getters`，根`state`和根`getters`，假设我们定义的`getter`如下所示
+```js
+getter:{
+    filterFoot(){}
+}
+```
+那么此时的的`_wrappedGetters`应该为如下所示
+```js
+store._wrappedGetters = {
+  filterFoot:function wrappedGetter(store){} 
+}
+```
+由此可知`_wrappedGetters`属性对昂是为了盛装我们定义在`getter`属性对象中的方法的，现在我们讲解完了`registerGetter`函数，我们接着将`registerAction`函数，如下
+```js
+function registerAction (store, type, handler, local) {
+  const entry = store._actions[type] || (store._actions[type] = [])
+  entry.push(function wrappedActionHandler (payload) {
+    let res = handler.call(store, {
+      dispatch: local.dispatch,
+      commit: local.commit,
+      getters: local.getters,
+      state: local.state,
+      rootGetters: store.getters,
+      rootState: store.state
+    }, payload)
+    if (!isPromise(res)) {
+      res = Promise.resolve(res)
+    }
+    if (store._devtoolHook) {
+      return res.catch(err => {
+        store._devtoolHook.emit('vuex:error', err)
+        throw err
+      })
+    } else {
+      return res
+    }
+  })
+}
+```
 
 
 
