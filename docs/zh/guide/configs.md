@@ -1,4 +1,4 @@
-## 介绍
+### 介绍
 在了解相关工具的配置文件之前，我们先来了解一下vuex中使用到的一些相关的工具，具体做了哪些事情，为什么需要用到它们，这样就可以让我们对前端工程有一个大致的认识，而不至于一脸茫然（what you say？）
 * babel<br/>
 babel是一个javascript编译器，能将es5+的代码转换为当前浏览器环境兼容的代码，比如IE浏览器......<br/>
@@ -34,7 +34,7 @@ expect(add(1, 2)).toBe(3)
 ::: tip
 现在我们主要对rollup.config.js这个配置文件进行讲解，因为其它的配置文件我相信你可以看懂的，如果未能看懂请参考底部文档地址链接，看完相关文档我相信你能看懂:thinking:
 :::
-## rollup.config.js
+### rollup.config.js
 找到vuex文件根目录的rollup.config.js,在讲解配置文件之前，我们先看看该配置文件引入了那些东西有哪些作用，这样我们才能更好的分析当前配置文件具体做了什么事,如下:
 ```js 
     //  buble的主要功能是编译es5+的代码，相当于简化版的bable，既然是使用了buble那为什么vuex还要使用babel呢，原因很简单，既然前面提到了简化版，那么当然有babel能做buble不能做的，buble只能编译一些简单的语法（例如尖头函数等）
@@ -114,7 +114,7 @@ function createEntry(config) {
 ```
 由上可知createEntries的主要作用就是循环configs这个数组，然后将数组的每一项传递给createEntry这个函数，这样做的目的是在编译的时候根据不同的参数生成不同的出口文件，那么createEntry函数的作用可想而知，就是在执行的时刻根据createEntries传递的参数进行不同的配置，因为rollup.config.js默认是导出一个对象的，所以createEntry也应该是返回一个对象
 
-::: details 文档地址
+::: tip 官方文档地址
 babel: https://babeljs.io/<br/>
 rollup: https://rollupjs.org/guide/en/<br/>
 webpack: https://webpack.js.org/<br/>
