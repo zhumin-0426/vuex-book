@@ -845,31 +845,72 @@ if (module.namespaced) {
 在讲解如上这段代码的时候我们，我们先看到以下这个案例
 ```js
 const moduleA = {
-  namespaced:true,
-  state:{
-      count:0
-  },
-  mutations:{
-      increment:function(state){
-          ++state.count
-      },
-      decrement:function(state){
-          --state.count
-      }
-  }
+    namespaced:true,
+    state: {
+        title: "this is moduleA title!"
+    },
+    mutations:{
+        increment(state) {
+            ++state.count;
+        }
+    }
+}
+
+const moduleC = {
+    namespaced:true,
+    state: {
+        title: "this is moduleC title!"
+    },
+    mutations:{
+        increment(state) {
+            ++state.count;
+        }
+    }
+}
+
+const moduleB = {
+    namespaced:true,
+    state: {
+        title: "this is moduleB title!"
+    },
+    mutations:{
+        increment(state) {
+            ++state.count;
+        }
+    },
+    modules:{
+        moduleC
+    }
 }
 const store = new Vuex.Store({
-  state:{
-      context:'this is vuex!'
-  },
-  mutations:{
-      show:function(state){
-          console.log(state.context)
-      }
-  },
-  modules:{
-      moduleA
-  }
+    namespecd: true,
+    state: {
+        count: 0,
+        foots: [
+            { name: "蔬菜", id: 0 },
+            { name: "水果", id: 1 },
+            { name: "肉", id: 2 },
+        ]
+    },
+    getters: {
+        filterFoot: function (state, getter) {
+            return state.foots.filter((foot) => foot.id > 1)
+        }
+    },
+    mutations: {
+        increment(state) {
+            ++state.count;
+        }
+    },
+    actions: {
+        decrement(context) {
+            --context.state.count
+        }
+    },
+    modules:{
+        moduleA,
+        moduleB
+    }
 })
 ```
 根据以上可知此时我们的代码是不会走`if`分支的，所以我们先不讲`if`分支中的代码，继续往下看
@@ -1136,6 +1177,192 @@ function registerAction (store, type, handler, local) {
   })
 }
 ```
+首先我们看到在该函数中定义了一个常量`entey`，根据之前我们所讲的可知该常量应该为一个空数组`[]`，接着使用数组的`push`方法在该数组中添加一个函数，在讲解这个函数之前我们先来简单的回顾下`vuex`中的`action`是用来干嘛的
+1. Action 提交的是 mutation，而不是直接变更状态
+2. Action 可以包含任意异步操作
+知道了这两点，我们再来看函数中的代码，首先我们看到在该函数体先声明了一个变量`res`，该变量的值为`handle`函数执行的返回结果，该函数接收两个参数，第一个参数为一个对象，第二个参数是`payload`，即我们所说的载核，我们看到第一个参数是一个对象，聪明的你能猜到这个参数是做什么用的吗？没错，改参数就是我们在`actions`中定义方法是所说的与`store`实例具有相同方法和属性的`context`对象，具体属性我们不做过多的解释，我们接着往下看，首先判断`isPromise(res)`的返回值，我们根据顶部的引入关系找到该函数，如下
+```js
+export function isPromise (val) {
+  return val && typeof val.then === 'function'
+}
+```
+//TODO
+该函数返回的是一个布尔值，首先判断传递`val`是否存在，然后再判断该`val`中的属性`then`是否存在并且类型为`function`，如果条件满足就返回`true`，反之返回`false`，还记得在什么情况下一个函数的返回值具有`then`方法吗？那就是在函数返回一个`promise`对象的时候，该返回值才会具有`then`方法，ok，了解了这些我们继续往下看，如果`isPromise`取反得`true`，那就说明`handle`函数的返回值不包含`then`方法，也就是说明返回值不是一个`promise`对象，此时会在`if`判断的内部调用`promise.resolve`将`res`转换为`promise`对象并重新赋值给`res`，接着又是一个`if`判断，判断`store._devtoolHook`是否为`true`，该判断我们暂时先不管，但是我可以告诉你该属性和`devtoolPlugin`插件有关，所以在讲到该插件时我们再回头看，现在你只管返回`res`即可，也的确此时的`store._devtoolHook`为`false`，走`else`分支，那么我们现在就讲解完了`registerAction`函数了，我们也了解到了`_actions`属性对象的作用，其实就是用来盛装我们在`actions`属性对象中定义的方法的，假设我们在`actions`中的定义如下
+```js
+actions:{
+  change(){}
+}
+```
+那么此时的`store._actions`因为为如下所示
+```js
+store._actions = {
+  change:[function wrappedActionHandler(){}]
+}
+```
+现在我们讲完了`forEachAction`，我们接着往下看`forEachChild`这个函数，如下
+```js
+module.forEachChild((child, key) => {
+  installModule(store, rootState, path.concat(key), child, hot)
+})
+```
+其实你观察该函数你也大概能查到该函数的作用了吧，没错，其实该函数就是为了递归调用`installModule`函数的，以上面我们提到的案例为例，我们在`modules`属性中传递了一个`moduleA`模块，那么此时`store._modules.root._children`就会包含处理过的`moduleA`，如下所示
+```js
+_children:{
+  moduleA:{//Module
+    namespaced:true,
+    runtime:false,
+    _children:{},
+    _rawModule:{
+      state: {
+        title: "this is moduleA title!"
+      }
+    },
+    state: {
+      title: "this is moduleA title!"
+    }
+  },
+}
+```
+我们观察`forEachChild`参数函数体中的代码，在调用`installModule`函数的时候只有第三个和第四个参数有所改变，根据上面说的案例可知此时的`path`应该为`[moduleA]`，`child`就为`_children`中`moduleA`中的属性值，既然此时的`path`不再是一个空数组，那么可知`isRoot`此时就为`false`，那么此时就会走如下这段代码
+```js
+// set state
+if (!isRoot && !hot) {
+  const parentState = getNestedState(rootState, path.slice(0, -1))
+  const moduleName = path[path.length - 1]
+  store._withCommit(() => {
+    if (__DEV__) {
+      if (moduleName in parentState) {
+        console.warn(
+          `[vuex] state field "${moduleName}" was overridden by a module with the same name at "${path.join('.')}"`
+        )
+      }
+    }
+    Vue.set(parentState, moduleName, module.state)
+  })
+}
+```
+首先声明了一个常量一个常量`parentState`，改常量的值为`getNestedState`函数的返回值，我们找到该方法如下所示
+```js
+function getNestedState (state, path) {
+  return path.reduce((state, key) => {
+    return state[key]
+  }, state)
+}
+```
+该函数接收两个参数，第一个参数是透传过来的`state`，第二个参数为`path`，根据上面提到的案例可知我们在全局全局注册了`moduleA`和`moduleB`两个模块，然后又在`moduleB`中注册了`moduleC`，假设我们此时执行到了`moduleC`这个模块，那么此时的`path`应该为`[moduleB，moduleC]`，但是因为我们在传参的时候调用了`.slice`方法，所以`path`应该为`[moduleB]`，所以根据以上所述，那么此时`getNestedState`的返回结果为如下所示
+```js
+const parentState = {
+  title:'this is moduleB title!',
+  moduleC:{xxx}
+}
+```
+所以我们现在就知道`getNestedState`函数的作用是为了获取父级模块中的`state`的，现在我们继续往下看，定义了一个常量`moduleName`，该常量的结果为当前模块的名称，也就是`path[path.length-1]`，假设我们现在在处理c模块，那么此时的`moduleName`的值就为`moduleC`，ok，我们现在继续往下看执行的是如下代码
+```js
+store._withCommit(() => {
+  if (__DEV__) {
+    if (moduleName in parentState) {
+      console.warn(
+        `[vuex] state field "${moduleName}" was overridden by a module with the same name at "${path.join('.')}"`
+      )
+    }
+  }
+  Vue.set(parentState, moduleName, module.state)
+})
+```
+如上所示执行了当前`store`类中的`_withCommit`方法，该方法接收一个函数作为参数，我们先找到`_withCommit`函数，如下所示
+```js
+_withCommit (fn) {
+  const committing = this._committing
+  this._committing = true
+  fn()
+  this._committing = committing
+}
+```
+首先保存当前`store`中的`_committing`属性并赋值给`committing`常量，改属性定义在顶部，初始值为`false`，然后将当前的`store`属性设置为`true`，再执行我们传递过来的函数`fn`，`fn`如下所示
+```js
+const fn = () => {
+  if (__DEV__) {
+    if (moduleName in parentState) {
+      console.warn(
+        `[vuex] state field "${moduleName}" was overridden by a module with the same name at "${path.join('.')}"`
+      )
+    }
+  }
+  Vue.set(parentState, moduleName, module.state)
+}
+```
+其实这段代码的作用很简单，就是利用`Vue.set方法`将当前模块添加到父级模块的`state`属性对象中的，如果父级模块的`state`属性对象中存在与当前需要添加模块相同的名称，那么就会给用户一段警告，讲完了这里`installModule`函数也讲的差不多了，但是还有最后一段代码没有讲，如下所示
+```js
+if (module.namespaced) {
+  if (store._modulesNamespaceMap[namespace] && __DEV__) {
+    console.error(`[vuex] duplicate namespace ${namespace} for the namespaced module ${path.join('/')}`)
+  }
+  store._modulesNamespaceMap[namespace] = module
+}
+```
+首先判读`module.namespaced`是否为`true`，即我们在模块中是否将`namespaced`设置为了`true`，如果设置为`true`，那么当前模块就会启用命名空间，假设我们当前设置为`true`，那么此时就会执行`if`语句中的代码，首先判断`store`中的`_modulesNamespaceMap`是否存在当前的获取的命名空间，如果存在并且在开发环境下，那么就会在终端给用户发送一段错误提示，如果不存在那么就会在`_modulesNamespaceMap`将当前获取的命名空间作为属性名称，当前的模块作为属性值进行设置，到此为之我们就将`installModule`函数中的所有内容都讲完了(费了老大劲了)，现在我们来总结一些`installModule`函数做了哪些事，有以下几点
+1. 获取模块的命名空间并在`_modulesNamespaceMap对象中进行设置
+2. 将当前模块设置到父级模块的`state`属性对象中
+3. 当命名空间存在是重新定义`store`中的`dispatch`等方法
+4. 将我们设置`mutations`，`getter`，`actions`中的方法分别添加到`store`中的`_mutations`、`_wrappedGetters`、`_actions`这几个属性对象中
+
+现在我们讲解完了`installModule`函数，聪明的你是否看懂了呢？没看懂没关系，多看几遍就行，现在我们还是继续往下讲解吧，如下
+```js
+resetStoreVM(this,state)
+```
+根据以上我们找`resetStoreVM`函数，该函数定义子啊当前文件的下方
+```js
+function resetStoreVM (store, state, hot) {
+  const oldVm = store._vm
+  // bind store public getters
+  store.getters = {}
+  // reset local getters cache
+  store._makeLocalGettersCache = Object.create(null)
+  const wrappedGetters = store._wrappedGetters
+  const computed = {}
+  forEachValue(wrappedGetters, (fn, key) => {
+    // use computed to leverage its lazy-caching mechanism
+    // direct inline function use will lead to closure preserving oldVm.
+    // using partial to return function with only arguments preserved in closure environment.
+    computed[key] = partial(fn, store)
+    Object.defineProperty(store.getters, key, {
+      get: () => store._vm[key],
+      enumerable: true // for local getters
+    })
+  })
+
+  // use a Vue instance to store the state tree
+  // suppress warnings just in case the user has added
+  // some funky global mixins
+  const silent = Vue.config.silent
+  Vue.config.silent = true
+  store._vm = new Vue({
+    data: {
+      $$state: state
+    },
+    computed
+  })
+  Vue.config.silent = silent
+
+  // enable strict mode for new vm
+  if (store.strict) {
+    enableStrictMode(store)
+  }
+
+  if (oldVm) {
+    if (hot) {
+      // dispatch changes in all subscribed watchers
+      // to force getter re-evaluation for hot reloading.
+      store._withCommit(() => {
+        oldVm._data.$$state = null
+      })
+    }
+    Vue.nextTick(() => oldVm.$destroy())
+  }
+}
+```
+
+
 
 
 
