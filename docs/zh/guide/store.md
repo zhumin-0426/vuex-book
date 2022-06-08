@@ -1278,7 +1278,7 @@ _withCommit (fn) {
   this._committing = committing
 }
 ```
-首先保存当前`store`中的`_committing`属性并赋值给`committing`常量，改属性定义在顶部，初始值为`false`，然后将当前的`store`属性设置为`true`，再执行我们传递过来的函数`fn`，`fn`如下所示
+首先保存当前`store`中的`_committing`属性并赋值给`committing`常量，改属性定义在顶部，初始值为`false`，然后将当前的`store`属性设置为`true`，再执行我们传递过来的函数`fn`，但是这样做的意义何在呢？等我们讲到开启严格模式时再来将该函数存在的意义，现在我们先来将`fn`，`fn`如下所示
 ```js
 const fn = () => {
   if (__DEV__) {
@@ -1361,12 +1361,82 @@ function resetStoreVM (store, state, hot) {
   }
 }
 ```
-
-
-
-
-
-
+如上所示，我们先设置了一个常量`oldVm`，该常量的值为`store._vm`，聪明的你知道此时的`store._vm`是什么吗？没错，此时的`_vm`属性应该为`undefind`，因为我们压根没有初始化该值，那这样做的目的只有一个原因，那就是`resetStoreVM`函数肯定在别处调用了，该常量是用来保存上一次初始化的`_vm`属性的，既然是保存上一次的，那么肯定在`resetStoreVM`函数中就会初始化该属性，观察`resetStoreVM`函数也的确发现`store._vm`是一个`vue`实例而来的，现在我们继续往下看，如下所示
+```js
+// bind store public getters
+store.getters = {}
+// reset local getters cache
+store._makeLocalGettersCache = Object.create(null)
+const wrappedGetters = store._wrappedGetters
+const computed = {}
+```
+接着在`store`中添加了两个属性，分别是`getters`和`_makeLocalGettersCache`，`_makeLocalGettersCache`属性在调用`resetStoreVM`有被初始化过，所以这一次是为了重置用的，接着声明了两个常量，分别是`wrappedGetters`和`computed`，`wrappedGetters`的常量值为`store._wrappedGetters`，还记得`_wrappedGetters`是做什么用的吗？它是用来盛载我们在`getter`中定义的函数用的，不记得的话就往回翻翻，`computed`常量的值为一个空对象，现在我们接着往下看，如下所示
+```js
+forEachValue(wrappedGetters, (fn, key) => {
+  // use computed to leverage its lazy-caching mechanism
+  // direct inline function use will lead to closure preserving oldVm.
+  // using partial to return function with only arguments preserved in closure environment.
+  computed[key] = partial(fn, store)
+  Object.defineProperty(store.getters, key, {
+    get: () => store._vm[key],
+    enumerable: true // for local getters
+  })
+})
+```
+首先循环了`wrappedGetters`这个对象，至于`forEachValue`函数我们不再多讲，我们直接看到传递给`forEachValue`函数的第二个参数，该参数是一个函数，该函数接收两个参数，第一个参数`fn`，即为`wrappedGetters`中的属性值，`key`为`wrappedGetters`中键值，现在我们看向函数体，首早`computed`以`key`为属性名称添加属性，且属性值为`partial`函数的返回值，根据顶部的引入关系我们找到`partial`函数如下所示
+```js
+export function partial (fn, arg) {
+  return function () {
+    return fn(arg)
+  }
+}
+```
+我们观察该函数可知，其实他就是吧`fn`包裹在另一个函数中，然后将`arg`作为参数传递给`fn`，但是你要知道此时的`fn`并未执行，只有当`fn`的外层函数执行时才会执行，所以我们知道`computed`对象中的属性就是一个包裹了`fn`的函数，而这样做的目的是为了若是直接使用内联函数会导致保存oldVm的闭包，所以源码中定义了partial函数，用来返回只保留闭包环境中的参数的函数，使用computed，是为利用其惰性缓存机制，但是现在并不是，我们继续往下看，接着使用`Object.defineProperty`将`store.getters`从数据属性转换为了`访问器属性，并将`store.getters`中的取值函数设置为`() => store._vm[key]`，所以当我们获取`store.getters`中的属性时起时就是在获取` store._vm[key]`，并将`enumerable`属性设置为`true`，意为可遍历的，这样做的目的起时是为了我们可以同过`store.getters.xxx`进行访问用的，接着我们来看如下这段代码
+```js
+const silent = Vue.config.silent
+Vue.config.silent = true
+store._vm = new Vue({
+  data: {
+    $$state: state
+  },
+  computed
+})
+Vue.config.silent = silent
+```
+观察这段代码起时就是我们在之前所说的为了初始化或者重置`store._vm`属性的，首先定义了一个常量`silent`，该常量的值为`Vue.config.silent`，然后将`Vue.config.silent`，设置为`true`，还记的`Vue.config.silent`时干嘛的吗？没错，就是你想的那样，它是为了控制`vue`给我们是否提供日志与警告的，而这么做的目的就是为了为防止用户添加了一些时髦的全局mixins而出现日志与警告，创建完成后，则设置回原来的值，现在我们来看重置`store._vm`的这段代码，首先`store._vm`的属性值就是一个`vue`实例，然后在该实例的`data`对象中添加`$$state`属性，该属性的属性值为`state`，那么这样就可以达到存储状态树的目的，且都是为响应式的，然后在computed
+传入`vue`实例中，那么这样一来`computed`常量就为了`vue`中的计算属性，以实现getter的返回值会根据它的依赖被缓存起来，且只有当它的依赖值发生了改变才会被重新计算，改属性会被定义到`store._vm`上面，这也是为什么将`store.getters`中的取值函数设置为`() => store._vm[key]`的原因，讲完了这段代码其实`resetStoreVM`函数就讲解的差不多了，但是还有一些未讲完，我们接着往下看
+```js
+if (store.strict) {
+  enableStrictMode(store)
+}
+```
+首先是一个`if`判断，`store.strict`为`true`时就执行`enableStrictMode`，聪明的你知道`store.strict`在什么情况下为`true`吗？没错，就是在我们将`vuex`设置为严格模式时它才为`true`的，默认为`false`,现在我们假设它现在为`true`，既然为`true`，那么就会执行`enableStrictMode`函数，我们找到`enableStrictMode`函数如下所示
+```js
+function enableStrictMode (store) {
+  store._vm.$watch(function () { return this._data.$$state }, () => {
+    if (__DEV__) {
+      assert(store._committing, `do not mutate vuex store state outside mutation handlers.`)
+    }
+  }, { deep: true, sync: true })
+}
+```
+我们直接看到该函数的函数体，利用`store._vm.$watch`去监听`this._data.$$state`，即监听`vuex`中的状态树，当在开发环境下并且`store._committing`为`false`时就会给用户在控制台发送一段错误提示，即大概的意思为`vuex`的状态必须利用`mutation`进行改变，否则就会发生报错，那你现在应该知道`_withCommit`函数的作用了吧，其实就是为了状态变更而存在的，因为我们在源码中难免需要变更状态，所以此时就会使用`_withCommit`函数进行变更，而外部在使用`vuex`时，并且在严格模式下时，此时就会调用`enableStrictMode`函数，因为每次`vuex`内部调用完`_withCommit`都会将`store._committing`重置为`false`，所以此时如果在外部不使用`mutation`中的处理函数变更状态时就会报错了，讲完了这些我们继续往下看
+```js
+if (oldVm) {
+  if (hot) {
+    // dispatch changes in all subscribed watchers
+    // to force getter re-evaluation for hot reloading.
+    store._withCommit(() => {
+      oldVm._data.$$state = null
+    })
+  }
+  Vue.nextTick(() => oldVm.$destroy())
+}
+```
+我们看到如是代码，首先判断`oldVm`是否存在，什么时候存在呢？很简单，就是在`vuex`内部多次调用`resetStoreVM`函数时，除了第一次之外`oldVm`都是存在的，现在我们假设它存在，接着又判断`hot`是否为`true`，你们还对`hot`有什么印象吗？不记得没关系，我现在说个你听，`Vuex`支持在开发过程中热重载`mutation`、`module`、`action`和`getter`，但我们启用热重载时，`hot`就会为`true`，现在假设你在使用`vuex`的时候启用了热重载，现在我们看`if`代码块中的中的代码，很显然，此时又调用了`store._withCommit`，那么也就意味着状态需要发生变更，我们猜测的也并没有错，在`store._withCommit`传入的参数函数中，也的确是将`oldVm._data.$$state`设置为`null`，而这样做的目的是为了对所有订阅的观察者发送变更，强制getter重新评估，以便进行热重重载，接着就使用`oldVm.$destroy()`方法销毁旧实例，自此`resetStoreVM`中的所有内容就都讲完了，现在我们来总结一下`resetStoreVM`函数做了哪些事
+1. 在`store`中添加了两个属性`_vm`属性
+2. 让getter在通过属性访问时作为Vue的响应式系统的一部分缓存其中
+总结完了
 
 
 ```js
