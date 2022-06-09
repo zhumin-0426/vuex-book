@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>找到我们的入口文件 | Vuex</title>
+    <meta name="generator" content="VuePress 1.8.2">
+    
+    <meta name="description" content="vuex source code lean!">
+    
+    <link rel="preload" href="/vuex-book/assets/css/0.styles.630dc965.css" as="style"><link rel="preload" href="/vuex-book/assets/js/app.48c02ebe.js" as="script"><link rel="preload" href="/vuex-book/assets/js/2.1e0a2b2f.js" as="script"><link rel="preload" href="/vuex-book/assets/js/11.8873ddfd.js" as="script"><link rel="prefetch" href="/vuex-book/assets/js/10.3621b6a3.js"><link rel="prefetch" href="/vuex-book/assets/js/12.44614db4.js"><link rel="prefetch" href="/vuex-book/assets/js/13.cd2cc785.js"><link rel="prefetch" href="/vuex-book/assets/js/14.00a76b46.js"><link rel="prefetch" href="/vuex-book/assets/js/15.c6b96008.js"><link rel="prefetch" href="/vuex-book/assets/js/3.25e1a0a6.js"><link rel="prefetch" href="/vuex-book/assets/js/4.2f744ccc.js"><link rel="prefetch" href="/vuex-book/assets/js/5.f0bf878f.js"><link rel="prefetch" href="/vuex-book/assets/js/6.2cd6864b.js"><link rel="prefetch" href="/vuex-book/assets/js/7.388efcce.js"><link rel="prefetch" href="/vuex-book/assets/js/8.12fbcd5f.js"><link rel="prefetch" href="/vuex-book/assets/js/9.8c857059.js">
+    <link rel="stylesheet" href="/vuex-book/assets/css/0.styles.630dc965.css">
+  </head>
+  <body>
+    <div id="app" data-server-rendered="true"><div class="theme-container"><header class="navbar"><div class="sidebar-button"><svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" viewBox="0 0 448 512" class="icon"><path fill="currentColor" d="M436 124H12c-6.627 0-12-5.373-12-12V80c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12zm0 160H12c-6.627 0-12-5.373-12-12v-32c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12zm0 160H12c-6.627 0-12-5.373-12-12v-32c0-6.627 5.373-12 12-12h424c6.627 0 12 5.373 12 12v32c0 6.627-5.373 12-12 12z"></path></svg></div> <a href="/vuex-book/" class="home-link router-link-active"><!----> <span class="site-name">Vuex</span></a> <div class="links"><div class="search-box"><input aria-label="Search" autocomplete="off" spellcheck="false" value=""> <!----></div> <!----></div></header> <div class="sidebar-mask"></div> <aside class="sidebar"><!---->  <ul class="sidebar-links"><li><a href="/vuex-book/" aria-current="page" class="sidebar-link">前言</a></li><li><section class="sidebar-group depth-0"><p class="sidebar-heading"><span>介绍</span> <!----></p> <ul class="sidebar-links sidebar-group-items"><li><a href="/vuex-book/zh/" aria-current="page" class="sidebar-link">关于该文档</a></li><li><a href="/vuex-book/zh/vuex.html" class="sidebar-link">vuex</a></li></ul></section></li><li><section class="sidebar-group depth-0"><p class="sidebar-heading open"><span>正文</span> <!----></p> <ul class="sidebar-links sidebar-group-items"><li><a href="/vuex-book/zh/guide/package.html" class="sidebar-link">从package.json开始</a></li><li><a href="/vuex-book/zh/guide/configs.html" class="sidebar-link">相关工具以及配置文件的介绍</a></li><li><a href="/vuex-book/zh/guide/entry.html" aria-current="page" class="active sidebar-link">以package.json为线索</a><ul class="sidebar-sub-headers"><li class="sidebar-sub-header"><a href="/vuex-book/zh/guide/entry.html#找到我们的入口文件" class="sidebar-link">找到我们的入口文件</a></li></ul></li><li><a href="/vuex-book/zh/guide/store.html" class="sidebar-link">vuex.store实例初始化</a></li><li><a href="/vuex-book/zh/guide/methods.html" class="sidebar-link">vuex.store实例方法</a></li></ul></section></li></ul> </aside> <main class="page"> <div class="theme-default-content content__default"><h2 id="找到我们的入口文件"><a href="#找到我们的入口文件" class="header-anchor">#</a> 找到我们的入口文件</h2> <p>由前面提到的，我们分析了<code>package.json</code>文件以及<code>rollup.config.js</code>文件，根据<code>rollup.config.js</code>这个配置文件不难找出入口文件有两个，我们来看到以下代码行：</p> <div class="language-js line-numbers-mode"><div class="highlight-lines"><div class="highlighted"> </div><br><div class="highlighted"> </div><br></div><pre class="language-js"><code><span class="token punctuation">{</span> input<span class="token operator">:</span> <span class="token string">'src/index.js'</span><span class="token punctuation">,</span> file<span class="token operator">:</span> <span class="token string">'dist/vuex.esm-browser.js'</span><span class="token punctuation">,</span> format<span class="token operator">:</span> <span class="token string">'es'</span><span class="token punctuation">,</span> browser<span class="token operator">:</span> <span class="token boolean">true</span><span class="token punctuation">,</span> env<span class="token operator">:</span> <span class="token string">'development'</span> <span class="token punctuation">}</span><span class="token punctuation">,</span>
+<span class="token operator">...</span>
+<span class="token punctuation">{</span> input<span class="token operator">:</span> <span class="token string">'src/index.cjs.js'</span><span class="token punctuation">,</span> file<span class="token operator">:</span> <span class="token string">'dist/vuex.cjs.js'</span><span class="token punctuation">,</span> format<span class="token operator">:</span> <span class="token string">'cjs'</span><span class="token punctuation">,</span> env<span class="token operator">:</span> <span class="token string">'development'</span> <span class="token punctuation">}</span>
+</code></pre><div class="line-numbers-wrapper"><span class="line-number">1</span><br><span class="line-number">2</span><br><span class="line-number">3</span><br></div></div><p>根据这两行代码不难看出入口文件包括<code>src</code>目录下的<code>index.js</code>文件和<code>index.cjs.js</code>文件，我们先不管<code>index.cjs.js</code>文件，后续我们再进行补充，暂时先看<code>src</code>目录下的<code>index.js</code>文件，如下</p> <div class="language-js line-numbers-mode"><pre class="language-js"><code><span class="token keyword">import</span> <span class="token punctuation">{</span> Store<span class="token punctuation">,</span> createStore <span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">'./store'</span>
+<span class="token keyword">import</span> <span class="token punctuation">{</span> storeKey<span class="token punctuation">,</span> useStore <span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">'./injectKey'</span>
+<span class="token keyword">import</span> <span class="token punctuation">{</span> mapState<span class="token punctuation">,</span> mapMutations<span class="token punctuation">,</span> mapGetters<span class="token punctuation">,</span> mapActions<span class="token punctuation">,</span> createNamespacedHelpers <span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">'./helpers'</span>
+<span class="token keyword">import</span> <span class="token punctuation">{</span> createLogger <span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">'./plugins/logger'</span>
+
+<span class="token keyword">export</span> <span class="token keyword">default</span> <span class="token punctuation">{</span>
+    version<span class="token operator">:</span> <span class="token string">'__VERSION__'</span><span class="token punctuation">,</span>
+    Store<span class="token punctuation">,</span>
+    storeKey<span class="token punctuation">,</span>
+    createStore<span class="token punctuation">,</span>
+    useStore<span class="token punctuation">,</span>
+    mapState<span class="token punctuation">,</span>
+    mapMutations<span class="token punctuation">,</span>
+    mapGetters<span class="token punctuation">,</span>
+    mapActions<span class="token punctuation">,</span>
+    createNamespacedHelpers<span class="token punctuation">,</span>
+    createLogger
+<span class="token punctuation">}</span>
+
+<span class="token keyword">export</span> <span class="token punctuation">{</span>
+    Store<span class="token punctuation">,</span>
+    storeKey<span class="token punctuation">,</span>
+    createStore<span class="token punctuation">,</span>
+    useStore<span class="token punctuation">,</span>
+    mapState<span class="token punctuation">,</span>
+    mapMutations<span class="token punctuation">,</span>
+    mapGetters<span class="token punctuation">,</span>
+    mapActions<span class="token punctuation">,</span>
+    createNamespacedHelpers<span class="token punctuation">,</span>
+    createLogger
+<span class="token punctuation">}</span>
+</code></pre> <div class="line-numbers-wrapper"><span class="line-number">1</span><br><span class="line-number">2</span><br><span class="line-number">3</span><br><span class="line-number">4</span><br><span class="line-number">5</span><br><span class="line-number">6</span><br><span class="line-number">7</span><br><span class="line-number">8</span><br><span class="line-number">9</span><br><span class="line-number">10</span><br><span class="line-number">11</span><br><span class="line-number">12</span><br><span class="line-number">13</span><br><span class="line-number">14</span><br><span class="line-number">15</span><br><span class="line-number">16</span><br><span class="line-number">17</span><br><span class="line-number">18</span><br><span class="line-number">19</span><br><span class="line-number">20</span><br><span class="line-number">21</span><br><span class="line-number">22</span><br><span class="line-number">23</span><br><span class="line-number">24</span><br><span class="line-number">25</span><br><span class="line-number">26</span><br><span class="line-number">27</span><br><span class="line-number">28</span><br><span class="line-number">29</span><br><span class="line-number">30</span><br><span class="line-number">31</span><br></div></div></div> <footer class="page-edit"><!----> <div class="last-updated"><span class="prefix">上次更新::</span> <span class="time">2022-6-9 4:15:23 ├F10: PM┤</span></div></footer> <div class="page-nav"><p class="inner"><span class="prev">
+      ←
+      <a href="/vuex-book/zh/guide/configs.html" class="prev">
+        相关工具以及配置文件的介绍
+      </a></span> <span class="next"><a href="/vuex-book/zh/guide/store.html">
+        vuex.store实例初始化
+      </a>
+      →
+    </span></p></div> </main></div><div class="global-ui"></div></div>
+    <script src="/vuex-book/assets/js/app.48c02ebe.js" defer></script><script src="/vuex-book/assets/js/2.1e0a2b2f.js" defer></script><script src="/vuex-book/assets/js/11.8873ddfd.js" defer></script>
+  </body>
+</html>
