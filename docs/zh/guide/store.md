@@ -1435,66 +1435,20 @@ if (oldVm) {
 ```
 我们看到如是代码，首先判断`oldVm`是否存在，什么时候存在呢？很简单，就是在`vuex`内部多次调用`resetStoreVM`函数时，除了第一次之外`oldVm`都是存在的，现在我们假设它存在，接着又判断`hot`是否为`true`，你们还对`hot`有什么印象吗？不记得没关系，我现在说个你听，`Vuex`支持在开发过程中热重载`mutation`、`module`、`action`和`getter`，但我们启用热重载时，`hot`就会为`true`，现在假设你在使用`vuex`的时候启用了热重载，现在我们看`if`代码块中的中的代码，很显然，此时又调用了`store._withCommit`，那么也就意味着状态需要发生变更，我们猜测的也并没有错，在`store._withCommit`传入的参数函数中，也的确是将`oldVm._data.$$state`设置为`null`，而这样做的目的是为了对所有订阅的观察者发送变更，强制getter重新评估，以便进行热重重载，接着就使用`oldVm.$destroy()`方法销毁旧实例，自此`resetStoreVM`中的所有内容就都讲完了，现在我们来总结一下`resetStoreVM`函数做了哪些事
 1. 在`store`中添加了两个属性`_vm`属性
-2. 让getter在通过属性访问时作为Vue的响应式系统的一部分缓存其中
-总结完了
+2. 让getter在通过属性访问时作为Vue的响应式系统的一部分缓存其中<br/>
 
-
+总结完了我们继续往下看，再坚持一下，坚持就胜利啊朋友，看吧看吧，如下所示
 ```js
-commit (_type, _payload, _options) {
-  // check object-style commit
-  const {
-    type,
-    payload,
-    options
-  } = unifyObjectStyle(_type, _payload, _options)
-
-  const mutation = { type, payload }
-  const entry = this._mutations[type]
-  if (!entry) {
-    if (__DEV__) {
-      console.error(`[vuex] unknown mutation type: ${type}`)
-    }
-    return
-  }
-  this._withCommit(() => {
-    entry.forEach(function commitIterator (handler) {
-      handler(payload)
-    })
-  })
-
-  this._subscribers
-    .slice() // shallow copy to prevent iterator invalidation if subscriber synchronously calls unsubscribe
-    .forEach(sub => sub(mutation, this.state))
-
-  if (
-    __DEV__ &&
-    options && options.silent
-  ) {
-    console.warn(
-      `[vuex] mutation type: ${type}. Silent option has been removed. ` +
-      'Use the filter functionality in the vue-devtools'
-    )
-  }
+plugins.forEach(plugin => plugin(this))
+```
+这一行代码很简单，就是循环`plugins`然后执行，友情提醒一下，`plugins`就是我们在`vuex`中定义的`plugins`选项属性，这里我们不再多讲我们继续玩下看如下代码
+```js
+const useDevtools = options.devtools !== undefined ? options.devtools : Vue.config.devtools
+if (useDevtools) {
+  devtoolPlugin(this)
 }
 ```
-首先我们看到commit方法接受三个参数，分别是_type、_payload、_options，在了解这三个参数代表着什么之前我们先来回顾下commit的使用风格，commit的使用风格有两种形式：
-```js
-//第一种形式
-store.commit('increment',10)
-// 第二种形式
-store.commit({
-  type:"increment",
-  amount:10
-})
-```
-了解完commit的使用风格之后我们在来看如下代码
-```js
-  const {
-    type,
-    payload,
-    options
-  } = unifyObjectStyle(_type, _payload, _options)
-```
+首先定义了一个常量`useDevtools`，假如`options.devtools`不为`undefined`那么`useDevtools`的值就为`options.devtools`，否则为`Vue.config.devtools`，`devtools`若在`vuex`中设置为`true`，则启用`devtoolPlugin`插件，否则不启用，至于`devtoolPlugin`插件我们分开讲，而至于`devtools`属性官方文档说的很清楚了这里不再多讲，至此我们`vuex`所有的初始化内容就都讲完了，恭喜大家
 
 
 
