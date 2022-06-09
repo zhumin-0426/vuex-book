@@ -14,6 +14,6 @@ git add -A
 git commit -m 'deploy'
 
 # 如果发布到 https://<USERNAME>.github.io/<REPO>
-git push -f git@github.com:zhumin-0426/vuex-book.git master:release
+git push -f git@github.com:zhumin-0426/vuex-book.git master:docs
 
 cd -

@@ -1,4 +1,5 @@
 module.exports = {
+	base:'/vuex-book/',
 	title: 'Vuex',
 	description: 'vuex source code learning!',
 	markdown: {
