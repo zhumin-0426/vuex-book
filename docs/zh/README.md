@@ -8,7 +8,6 @@
 
 ### 适用人群
 本文档适合于已经学习或者使用了`vuex`的程序猿进行阅读，如果你还没有学习或者使用过`vuex`的话，建议你先去阅读`vuex`的官方文档，底部有`vuex`的文档地址哦
-//TODO 改为外部链接形式
 ::: tip
-vuex官方地址:`https://v3.vuex.vuejs.org/`
+vuex官方地址链接：[vuex]('https://v3.vuex.vuejs.org/zh/')
 :::

@@ -32,7 +32,6 @@
     "types/vue.d.ts"
 ]
 ```
-//TODO  还没完全解释清晰
 `main`&`exports`字段：在很多的项目中也许你见到更多的是`main`字段而不包含`exports`字段，`main`字段主要是定义当前包的主要入口文件，但是`main`字段的功能是有限的，而这个时候`exports`就成了`main`字段的替代方案，`exports`字段允许定义包的入口点，当通过`node_modules`查找或自引用加载到其自身的名称导入时，支持子路径导出和条件导出，如果同时定义`exports`字段和`main`字段，那么`exports`字段的优先级高于`main`字段，那为什么在`vuex`的`package.json`文件中同时定义`main`字段和`exports`字段呢？因为`node`规定，当我们设置包的主入口点的时候，建议在`exports`字段和`main`字段同时定义，而以上`exports`字段使用的是条件导出
 
 `module`字段：从以上可以看出，`package.json`文件中有一个`module`字段，并且对应的值为`dist/vuex.esm.js`，那这又是做什么用的呢？其实这与打包工具中的`Tree Shaking`（摇树）功能有关，那什么是Tree Shaking呢？如果讲起比喻成一棵树的话，那么摇树就是将树上枯黄的树叶摇晃下来，看以下我给出一个rollup的例子
