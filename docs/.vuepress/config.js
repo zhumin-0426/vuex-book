@@ -7,17 +7,16 @@ module.exports = {
 	locales: {
 		'/': {
 			lang: 'zh-CN',
-			title: 'VuePress',
+			title: 'Vuex',
 			description: 'vuex source code lean!'
 		}
 	},
 	themeConfig: {
-		repo: 'https://github.com/zhumin-0426/vuex-book',
+		// repo: 'https://github.com/zhumin-0426/vuex-book',
 		prevLinks: true,
 		lastUpdated: '上次更新:',
 		nav: [
-			{ text: '正文', link: '/zh/guide/package' },
-			{ text: '附录', link: '/zh/appendix/util' }
+			// { text: '正文', link: '/zh/guide/package' }
 		],
 		sidebar: [
 			{
